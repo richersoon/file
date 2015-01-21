@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+   Backward compatible import build_neteans.xml directly
+-->   
+<project name="ide" default="default" >
+    <description>Builds, tests, and runs the project ST.</description>
+
+    <import file="D:/stSoftware/new/odesk/src/ST/build/build_netbeans.xml"/>
+    
+</project>

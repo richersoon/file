@@ -1,0 +1,664 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- ======================================================================= -->
+<!-- STServer build file                                                       -->
+<!-- ======================================================================= -->
+<project default="main" name="STServer build" >
+    <!--import file="build_app.xml"/-->
+
+    <target name="-setup-client">
+        <input 
+            defaultvalue="jobtrack" 
+            message="Which Client ?" 
+            validargs="AMLG,Aspecthuntley,dcLite,IEU,JobTrack,LeckLogic,SolutionIE,Tangibility" addproperty="installer.client"/>
+
+        <property name="${installer.client}" value="true"/>
+        
+        <condition property="installer.prefix" value="aspect">
+            <equals arg1="${installer.client}" arg2="Aspecthuntley"/>
+        </condition>
+
+        <condition property="include.layers" value="aspc_engine,aspc_app,aspecthuntley_app">
+            <equals arg1="${installer.client}" arg2="Aspecthuntley"/>
+        </condition>
+                
+        <condition property="installer.prefix" value="sie">
+            <equals arg1="${installer.client}" arg2="SolutionIE"/>
+        </condition>
+
+        <condition property="include.layers" value="aspc_engine,aspc_app,solutionie_app">
+            <equals arg1="${installer.client}" arg2="SolutionIE"/>
+        </condition>
+
+        <condition property="installer.prefix" value="tan">
+            <equals arg1="${installer.client}" arg2="Tangibility"/>
+        </condition>
+
+        <condition property="include.layers" value="aspc_engine,aspc_app,tangibility_app">
+            <equals arg1="${installer.client}" arg2="Tangibility"/>
+        </condition>
+
+        <condition property="installer.prefix" value="amlg">
+            <equals arg1="${installer.client}" arg2="AMLG"/>
+        </condition>
+
+        <condition property="include.layers" value="aspc_engine,aspc_app,amlg_app">
+            <equals arg1="${installer.client}" arg2="AMLG"/>
+        </condition>
+
+         <condition property="installer.prefix" value="ieu">
+            <equals arg1="${installer.client}" arg2="IEU"/>
+        </condition>
+
+        <condition property="include.layers" value="aspc_engine,aspc_app,ieu_app">
+            <equals arg1="${installer.client}" arg2="IEU"/>
+        </condition>
+
+        <condition property="installer.prefix" value="ll">
+            <equals arg1="${installer.client}" arg2="LeckLogic"/>
+        </condition>
+
+        <condition property="include.layers" value="aspc_engine,aspc_app">
+            <equals arg1="${installer.client}" arg2="LeckLogic"/>
+        </condition>
+
+        <condition property="installer.prefix" value="jt">
+            <equals arg1="${installer.client}" arg2="JobTrack"/>
+        </condition>
+<!--
+,memberapp
+-->
+        <condition property="include.layers" value="aspc_engine,aspc_app,smegateway_app,dns_app,access_app,115solutions_app,moelis_app,demo">
+            <equals arg1="${installer.client}" arg2="JobTrack"/>
+        </condition>
+
+    </target>
+
+    <target name="-setup-dcLite" if="dcLite">
+        <property name="installer.prefix" value="dc"/>
+        <property name="include.layers" value="aspc_engine,aspc_app,ssb,citi"/>       
+        <property name="builddb.clean.excluded" value="ssb,citi"/>
+        <property name="installer.server.name" value="dcLite"/>
+        <property name="loaddb.backup.docs" value="aspc_engine,aspc_app"/>
+
+    </target>
+    
+    <target name="-setup-default">
+        <property name="installer.prefix" value="core"/>
+        <property name="include.layers" value="aspc_engine,aspc_app"/>
+        
+        
+        <property name="builddb.clean.excluded" value="demo"/>
+        <property name="installer.server.name" value="${installer.prefix}Server"/>
+    </target>
+    
+    <target name="-init-release" description="Creates Directories etc" depends="-setup-client,-setup-dcLite,-setup-default">
+    <!--target name="-init-release" description="Creates Directories etc" depends="-init-engine,-tomcat-init,-setup-client,-setup-dcLite,-setup-default"-->
+
+        <fail if="args.com.aspc.Admin.GenerateJavaCode.App">You can have "args.com.aspc.Admin.GenerateJavaCode.App" set </fail>
+        <fail if="args.com.aspc.Install.Common.Apps.BuildDatabases">You can have "args.com.aspc.Install.Common.Apps.BuildDatabases" set </fail>
+        <fail if="args.com.aspc.Install.Common.Apps.ExtractDatabases">You can have "args.com.aspc.Install.Common.Apps.ExtractDatabases" set </fail>
+
+        <tstamp/>
+        
+        <property name="install.tmp.dir" value="${project.dir}/tmp/${installer.server.name}/"/>
+
+        <property name="classes.dir" value="${install.tmp.dir}/classes"/>
+        <mkdir dir="${classes.dir}"/>
+        
+        <property name="build.install.data.dir" value="${install.tmp.dir}/data"/>
+        <property name="build.install.data.backup.dir" value="${install.tmp.dir}/backup"/>
+
+        <property name="build.install.tempdb.user" value="sa"/>
+        <property name="build.install.tempdb.password" value=""/>
+        <property name="build.install.tempdb.dbserver" value="localhost"/>
+        <property name="build.install.tempdb.datasource" value="${build.install.data.dir}/aspc_master"/>
+        <property name="build.install.tempdb.connect.type" value="HSQLDB"/>
+
+        <property name="build.install.tempdb.master.url" value="${build.install.tempdb.datasource}"/>
+
+        <property name="builddb.clean.excluded" value="demo"/>
+              
+        <property name="build.install.lib.dir" value="${install.tmp.dir}/installer/lib"/>
+
+        <property name="build.install.server.dir" value="${install.tmp.dir}/${installer.server.name}${DSTAMP}"/>
+        <property name="build.webapps.root" value="${build.install.server.dir}/webapps/st"/>
+
+        <mkdir dir="${build.webapps.root}/WEB-INF/lib"/>
+
+        <property name="build.install.docs.dir" value="${install.tmp.dir}/docs"/>
+
+     </target>
+
+    <target name="-create-tmp-dir" description="Creates Directories etc" depends="-init-release">
+        <delete dir="${install.tmp.dir}" quiet="yes"/>
+        <mkdir dir="${install.tmp.dir}"/>
+    </target>
+
+    <target name="-dump-clean" depends="-init-release" unless="DISABLE-dump-clean">
+        <property name="loaddb.backup.docs" value="true"/>
+        <ant antfile="${src.dir}/build/build_app.xml" target="run-selected-file" >
+            <property name="MAX_MEMORY" value="2048m"/>
+            <property name="loaddb.backup.dir" value="${build.install.data.backup.dir}"/>
+            <property name="loaddb.backup.docs" value="${loaddb.backup.docs}"/>
+            <property name="build.dir" value="${classes.dir}"/>
+            <property name="run.class" value="com.aspc.Install.Common.Apps.ExtractDatabases"/>
+        </ant>
+    </target>
+
+    <!-- Loads the databases from the GIT dump so it can be cleaned  -->
+    <target name="-load-databases" description="loads the Databases"  unless="DISABLE-dump-clean" depends="-init-release,-dump-clean">
+
+        <mkdir dir="${build.install.docs.dir}"/>
+
+        <mkdir dir="${build.install.data.dir}"/>
+
+        <property name="builddb.virtualdb.url" value="${build.install.data.dir}"/>
+        <ant antfile="${src.dir}/build/build_app.xml" target="run-selected-file"  >        
+            <!--param name="builddb.config.file" value="${build.config.file}" /-->
+            <property name="builddb.virtualdb.url" value="${builddb.virtualdb.url}"/>
+            <property name="builddb.backup.dir" value="${build.install.data.backup.dir}"/>
+            <property name="builddb.clean" value="true"/>
+            <property name="builddb.dbname.ext" value=""/>
+            <property name="builddb.docs.dir" value="${build.install.docs.dir}"/>
+            <property name="srcdb_args" value="-w&quot;${DATASOURCE}&quot; -x${USER} -y${PASSWORD} -z${CONNECT_TYPE}"/>
+            <property name="USER" value="${build.install.tempdb.user}"/>
+            <property name="PASSWORD" value="${build.install.tempdb.password}" />
+            <property name="DBSERVER" value="${build.install.tempdb.dbserver}" />
+            <property name="DATASOURCE" value="${build.install.tempdb.datasource}" />
+            <property name="CONNECT_TYPE" value="${build.install.tempdb.connect.type}" />
+            <property name="MASTER_URL" value="${build.install.tempdb.master.url}"/>
+            <property name="run.class" value="com.aspc.Install.Common.Apps.BuildDatabases"/>
+        </ant>
+        <copy todir="${build.install.data.dir}" preservelastmodified="true">
+            <fileset dir="${build.install.data.backup.dir}" includes="*.properties,*.xml.gz"/>
+        </copy>
+    </target>
+
+
+    <target name="-tomcatDependents">
+        <fail unless="tomcat.home">Must set property 'tomcat.home'</fail>
+        <property name="build.tomcat.dir" value="${build.install.server.dir}/apache-tomcat"/>
+
+        <copy preservelastmodified="true" todir="${build.tomcat.dir}">
+            <fileset dir="${tomcat.home}">
+                <exclude name="**/core"/>
+                <exclude name="**/webapps/examples/**"/>
+            </fileset>
+        </copy>
+    </target>
+    
+    <target name="-create-maven-dcLite" if="dcLite">
+        <property name="ssmb.src.dir" value="${build.install.server.dir}/dev/ssmb/src/main/java/"/>
+
+        <delete dir="${ssmb.src.dir}"/>
+        <mkdir dir="${ssmb.src.dir}"/>
+        <mkdir dir="${build.install.server.dir}/dev/lib"/>
+        <unzip src="${user.home}/tmp/DC/ssmb-src.jar" dest="${ssmb.src.dir}" >
+            <patternset>
+                <include name="**/*.java"/>
+                <exclude name="**/selftest/**"/>
+                <exclude name="**/dclite/**"/>
+                <exclude name="**/test/**"/>
+
+                <exclude name="**/commander/performance/**"/>
+                <exclude name="**/TaskListChecker.java"/>
+                <exclude name="**/CleanFTPFiles.java"/>
+                <exclude name="**/UseCaseDoclet.java"/>
+               
+                <!--exclude name="**/css_ssl/**"/>
+                <exclude name="**/marklogic/**"/>
+                
+                <exclude name="**/ProcessFocusListData.java"/>
+                <exclude name="**/PruneTrefisModelFiles.java"/>
+                <exclude name="**/ProcessReportCalendarData.java"/>
+                <exclude name="**/ssmb/gdms/commander/**"/>
+                <exclude name="**/XMLFileIndexer.java"/>
+                <exclude name="**/GetBrandedSeries.java"/>
+                <exclude name="**/GetCompanyRatingBlock.java"/>
+                <exclude name="**/RenderHTML.java"/>
+                <exclude name="**/AllPageFixBorderOutputHandler.java"/>
+                <exclude name="**/IntradayPriceChartRequest.java"/>
+                <exclude name="**/MLPublicationResync.java"/>
+                <exclude name="**/DCDataServiceMap.java"/>
+                <exclude name="**/mercury/rendition/html/**"/-->
+                
+            </patternset>
+        </unzip>
+        
+        <replaceregexp byline="true" match="import com.ssmb.misc.StringUtilities;" replace="import com.aspc.remote.util.misc.StringUtilities;" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/*.java"/>
+            </fileset>
+        </replaceregexp>
+        
+        <replaceregexp byline="true" match="\.retrieveFileList\(.*\)" replace=".retrieveFileList()" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/FTPUtil.java"/>
+            </fileset>
+        </replaceregexp>
+        
+        <replaceregexp byline="true" match="     doProcess\(" replace=" doPost(" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/TrefisModelServlet.java"/>
+            </fileset>
+        </replaceregexp>
+                                
+        <replaceregexp byline="true" match="protected +void +doProcess *\(" replace="protected void extProcess(" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/*.java"/>
+            </fileset>
+        </replaceregexp>
+                
+        <replaceregexp byline="true" match="StringUtilities\.split\(" replace="StringUtilities.oldSplit(" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/*.java"/>
+            </fileset>
+        </replaceregexp>
+        
+        <replaceregexp byline="true" match="(public +double +calculate *\( *Query [a-zA-Z0-9 ]+, Formula [a-zA-Z0-9 ]+, *)StringBuffer (.*)" replace="\1 Appendable \2" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/*.java"/>
+            </fileset>
+        </replaceregexp>
+                
+        <replaceregexp byline="true" match=", orgInfo" replace=", (StringBuffer)orgInfo" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/com/ssmb/aggregation/AggFunction.java"/>
+            </fileset>
+        </replaceregexp>                
+        <replaceregexp byline="true" match="@Override" replace="" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/com/ssmb/clientfeed/internal/CFSalutationEmailMessageParser.java"/>
+            </fileset>
+        </replaceregexp>
+        
+        <replaceregexp byline="true" match="file.getInternalName\(version\)" replace="file.getInternalName()" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/com/ssmb/commander/sql/UserDraftDataCommand.java"/>
+            </fileset>
+        </replaceregexp>
+        
+                
+        <replaceregexp byline="true" match=" boolean useIndexes\)" replace=" boolean useIndexes) throws Exception" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/com/ssmb/dbobj/company/action/internal/DilutionLayerPlan.java"/>
+            </fileset>
+        </replaceregexp>        
+                
+        <replaceregexp byline="true" match=" boolean useIndex\)" replace=" boolean useIndex) throws Exception" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/com/ssmb/dbobj/company/action/internal/DilutionSearchPlan.java"/>
+            </fileset>
+        </replaceregexp>
+         
+        <replaceregexp byline="true" match="msg.setFrom\(null\);" replace="msg.setFrom((String)null);" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/com/ssmb/remote/internal/Mail.java"/>
+            </fileset>
+        </replaceregexp>         
+        <replaceregexp byline="true" match="createScreen\(final WebClient client, String objName, MutableDataSource ds\)" replace="createScreen(final WebClient client, String objName, MutableDataSource ds, SDBScreen scn)" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/com/ssmb/dbobj/plugin/GenerateFieldScreenPlugin.java"/>
+            </fileset>
+        </replaceregexp>
+        
+        <replaceregexp byline="true" match="isInstanceof" replace="isInstanceOf" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/*.java"/>
+            </fileset>
+        </replaceregexp>
+        <replaceregexp byline="true" match="protected void iGenerate\( ClientBrowser browser, StringBuffer buffer\)" replace="protected void iGenerate( ClientBrowser browser, StringBuilder buffer)" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/HTMLMultiListBox.java"/>
+            </fileset>
+        </replaceregexp>
+        
+        <replaceregexp byline="true" match="//#ASPC_GEN_END" replace="public com.aspc.dal.workflow.DBWorkflow getWorkflow( String... args){return null;}${line.separator}public void setWorkflow(com.aspc.dal.workflow.DBWorkflow wf, String... args) throws Exception{};${line.separator}//#ASPC_GEN_END" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="com/ssmb/workflow/dbobj/WFSubmission.java"/>
+                <include name="com/ssmb/clientfeed/dbobj/CFSubmission.java"/>
+                <include name="com/ssmb/distribution/dbobj/WFDistribution.java"/>
+            </fileset>
+        </replaceregexp>
+        
+        <replaceregexp byline="true" match="(public +Object +compute *\( *Query [a-zA-Z0-9 ]+, +)StringBuffer +(.*)" replace="\1 Appendable \2" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/*.java"/>
+            </fileset>
+        </replaceregexp>  
+                
+        <replaceregexp byline="true" match="(public +double +calculate *\( *Query [a-zA-Z0-9 ]+, +)StringBuffer +(.*)" replace="\1 Appendable \2" encoding="UTF-8">
+            <fileset dir="${ssmb.src.dir}">
+                <include name="**/*.java"/>
+            </fileset>
+        </replaceregexp>       
+        
+    </target>
+
+    <target name="-create-maven" depends="-init-release,-create-maven-dcLite">
+        <property name="main.src.dir" value="${build.install.server.dir}/dev/st-server/src/main/java/"/>
+
+        <mkdir dir="${main.src.dir}"/>
+
+        <condition property="additional.includes" value="com/aspecthuntley/**">
+            <equals arg1="${installer.client}" arg2="Aspecthuntley"/>
+        </condition>
+        <condition property="additional.includes" value="com/lecklogic/**">
+            <equals arg1="${installer.client}" arg2="LeckLogic"/>
+        </condition>
+
+        <condition property="additional.includes" value="com/tangibility/**">
+            <equals arg1="${installer.client}" arg2="Tangibility"/>
+        </condition>
+
+        <condition property="additional.includes" value="com/solutionie/**">
+            <equals arg1="${installer.client}" arg2="SolutionIE"/>
+        </condition>
+
+         <condition property="additional.includes" value="com/socialchange/**">
+            <equals arg1="${installer.client}" arg2="AMLG"/>
+        </condition>
+
+        <condition property="additional.includes" value="com/ieu/**">
+            <equals arg1="${installer.client}" arg2="IEU"/>
+        </condition>
+
+        <condition property="additional.includes" value="com/vicdata/**,com/smegateway/**,com/appsource/**,com/dns/**,com/accessair/**,com/solutions115/**,com/st/**,com/moelis/**">
+            <equals arg1="${installer.client}" arg2="JobTrack"/>
+        </condition>
+
+        <property name="additional.includes" value=""/>
+        <property name="main.src.includes" value="com/aspc/**,com/supertracker/**,com/ecyrd/**,org/**,jsr166y/**,${additional.includes}"/>
+        <property name="main.src.excludes" value="**/selftest/**,**/test/**,**/Test*,com/aspc/Layers/**,com/*/remote/**,com/aspc/developer/**"/>
+
+        <copy preservelastmodified="true" todir="${main.src.dir}">
+            <fileset dir="${src.dir}" includes="${main.src.includes}" excludes="${main.src.excludes}" casesensitive="false"/>
+        </copy>
+
+        <copy preservelastmodified="true" todir="${main.src.dir}">
+            <fileset dir="${src.dir}" includes="com/aspc/Layers/aspc_app/**" excludes="**/selftest/**" casesensitive="false"/>
+        </copy>
+
+        <!--
+        Copy Test files
+        -->
+        <property name="test.src.dir" value="${build.install.server.dir}/dev/st-server/src/test/java/"/>
+
+        <mkdir dir="${test.src.dir}"/>
+
+        <property name="test.src.includes" value="com/aspc/**/selftest/**,com/supertracker/**/selftest/**"/>
+        <property name="test.src.excludes" value="com/*/remote/**,com/aspc/developer/**"/>
+
+        <copy preservelastmodified="true" todir="${test.src.dir}">
+            <fileset dir="${src.dir}" includes="${test.src.includes}" excludes="${test.src.excludes}" casesensitive="false"/>
+        </copy>
+
+        <!--
+        Copy REMOTE files
+        -->
+        <property name="remote.src.dir" value="${build.install.server.dir}/dev/st-remote/src/main/java/"/>
+
+        <mkdir dir="${remote.src.dir}"/>
+
+        <property name="remote.src.includes" value="com/*/remote/**,com/aspc/developer/**"/>
+        <property name="remote.src.excludes" value="**/selftest/**,**/odbc/**"/>
+
+        <copy preservelastmodified="true" todir="${remote.src.dir}">
+            <fileset dir="${src.dir}" includes="${remote.src.includes}" excludes="${remote.src.excludes}" casesensitive="false"/>
+        </copy>
+
+        <!--
+        Copy REMOTE test files
+        -->
+        <property name="remote.test.dir" value="${build.install.server.dir}/dev/st-remote/src/test/java/"/>
+
+        <mkdir dir="${remote.test.dir}"/>
+
+        <property name="remote.test.includes" value="com/*/remote/**/selftest/**"/>
+        <property name="remote.test.excludes" value="**/odbc/**"/>
+
+        <copy preservelastmodified="true" todir="${test.src.dir}">
+            <fileset dir="${src.dir}" includes="${remote.test.includes}" excludes="${remote.test.excludes}" casesensitive="false"/>
+        </copy>
+
+
+        <!--
+        Copy ODBC files
+        -->
+        <property name="odbc.src.dir" value="${build.install.server.dir}/dev/st-odbc/src/main/java/"/>
+
+        <mkdir dir="${odbc.src.dir}"/>
+
+        <property name="odbc.src.includes" value="com/*/remote/odbc/**"/>
+        <property name="odbc.src.excludes" value="**/selftest/**"/>
+
+        <copy preservelastmodified="true" todir="${odbc.src.dir}">
+            <fileset dir="${src.dir}" includes="${odbc.src.includes}" excludes="${odbc.src.excludes}" casesensitive="false"/>
+        </copy>
+
+        <!--
+        Copy ODBC test files
+        -->
+        <property name="odbc.test.dir" value="${build.install.server.dir}/dev/st-odbc/src/test/java/"/>
+
+        <mkdir dir="${odbc.test.dir}"/>
+
+        <property name="odbc.test.includes" value="com/aspc/remote/odbc/**/selftest/**"/>
+        <property name="odbc.test.excludes" value=""/>
+
+        <copy preservelastmodified="true" todir="${odbc.test.dir}">
+            <fileset dir="${src.dir}" includes="${odbc.test.includes}" excludes="${odbc.test.excludes}" casesensitive="false"/>
+        </copy>
+
+
+    </target>
+
+    <target name="release-installer" depends="-create-tmp-dir,-create-maven,-build_application">
+
+        <mkdir dir="${build.webapps.root}/WEB-INF/jasper-reports"/>
+        <mkdir dir="${build.install.data.backup.dir}"/>
+
+        <mkdir dir="${build.install.server.dir}/data"/>
+
+        <mkdir dir="${build.install.server.dir}/server/webapps"/>
+        <mkdir dir="${build.install.data.dir}"/>
+        <copy todir="${build.install.server.dir}/data" preservelastmodified="true">
+            <fileset dir="${build.install.data.dir}">
+                <exclude name="**/backup/**"/>
+            </fileset>
+        </copy>
+
+        <copy preservelastmodified="true" todir="${build.install.server.dir}">
+            <fileset dir="${src.dir}/com/aspc/Install/Common/support" excludes="**/CVS/**"/>
+        </copy>
+
+        <mkdir dir="${build.install.docs.dir}"/>
+        <copy todir="${build.install.server.dir}/docs" preservelastmodified="true">
+            <fileset dir="${build.install.docs.dir}"/>
+        </copy>
+        <copy todir="${build.install.server.dir}/webapps/" includeemptydirs="false" preservelastmodified="true">
+            <fileset dir="${src.dir}/webapps/"/>
+        </copy>
+
+
+        <mkdir dir="${build.install.server.dir}/dev/lib"/>
+
+        <move todir="${build.install.server.dir}/dev/lib">
+            <fileset dir="${build.webapps.root}/WEB-INF/lib" includes="gwt*.jar,servlet-api.jar,catalina.jar,tomcat-coyote.jar"/>
+        </move>
+
+        <!-- <antcall target="-tomcatDependents"/> -->
+
+        <copy todir="${build.webapps.root}/WEB-INF/jasper-reports"  preservelastmodified="true">
+            <fileset dir="${src.dir}/build/jasper-reports" excludes="**/CVS/**"/>
+        </copy>
+
+        <condition property="_bootclasspath" value="${JDK.HOME}/lib/tools.jar;${JDK.HOME}/lib/dt.jar;${JDK.HOME}/jre/lib/rt.jar;${JDK.HOME}/jre/lib/jce.jar;${JDK.HOME}/jre/lib/jsse.jar">
+            <not>
+                <os family="mac"/>
+            </not>
+        </condition>
+        <property name="_bootclasspath" value=""/>
+        
+        <mkdir dir="${build.install.server.dir}/dev/lib"/>
+        <!--javac debug="off"
+                fork="yes"
+               deprecation="off"
+               encoding="utf-8"
+               bootclasspath="${_bootclasspath}"
+               nowarn="on"
+               includeantruntime="false"
+               destdir="${dest.dir}"
+               optimize="on"
+            >
+
+            <src>
+                <dirset dir="${build.install.server.dir}" includes="dev/st-remote/src/main/java,dev/st-server/src/main/java,conf/src/*/java" excludes="**/test/java"/>
+            </src>
+
+            <classpath>
+                <fileset dir="${build.webapps.root}/WEB-INF/lib" includes="*.jar"/>
+                <fileset dir="${build.install.server.dir}/dev/lib" includes="*.jar"/>
+
+            </classpath>
+            <classpath path="${lib.path.shared}"/>
+        </javac-->
+
+        <mkdir dir="${build.install.server.dir}/logs"/>
+
+        <jar
+            basedir="${build.dir}"
+            destfile="${build.install.server.dir}/launcher.jar"
+            includes="com/aspc/remote/**/*.class,com/aspc/developer/**/*.class,"
+        >
+            <manifest>
+                <attribute name="Main-Class" value="com.aspc.remote.launcher.App"/>
+                <attribute name="Class-Path" value="server/lib/log4j-1.2.16.jar webapps/st/WEB-INF/lib/commons-cli-1.0.jar webapps/st/WEB-INF/lib/commons-logging-1.1.3.jar webapps/st/WEB-INF/lib/ant.jar webapps/st/WEB-INF/lib/ant-launcher.jar webapps/st/WEB-INF/lib/maven-ant-tasks-2.1.3.jar"/>
+            </manifest>
+        </jar>
+
+        <property name="install.jar" value="${project.dir}/release/${installer.prefix}Installer.jar"/>
+
+        <jar
+            basedir="${build.dir}"
+            destfile="${install.jar}"
+            includes="com/aspc/remote/launcher/ExtractApp.class"            
+        >            
+            <manifest>
+                <attribute name="Main-Class" value="com.aspc.remote.launcher.ExtractApp"/>
+                <attribute name="base-dir" value="${installer.server.name}${DSTAMP}"/>
+                <attribute name="exclude-pattern" value="(com/.*|META.*)"/>
+
+                <attribute name="executable-pattern" value="(.*.sh|launcher.jar)"/>
+                <attribute name="writable-pattern" value="(conf/.*|logs/.*|server/conf/.*|webapps/cms/storage/.*)"/>
+            </manifest>
+        </jar>
+
+        <jar
+            update="true"
+            destfile="${install.jar}"
+
+            basedir="${install.tmp.dir}/${installer.server.name}${DSTAMP}/"
+        />
+
+    </target>
+
+    <target name="-legacy-edit" if="dcLite">
+                        
+        <replaceregexp byline="true" match="/\*//LEGACY_START" replace="/** //LEGACY_START @deprecated */" encoding="UTF-8">
+            <fileset dir="${build.install.server.dir}">
+                <include name="dev/*/src/main/java/**/*.java"/>
+            </fileset>
+        </replaceregexp>
+        
+        <replaceregexp byline="true" match="\*///LEGACY_END" replace="//LEGACY_END" encoding="UTF-8">
+            <fileset dir="${build.install.server.dir}">
+                <include name="dev/*/src/main/java/**/*.java"/>
+            </fileset>
+        </replaceregexp>
+    </target>
+    
+    <target name="-copy-libs-dclite" if="dcLite">
+        <copy todir="${build.install.server.dir}/dev/lib">
+            <fileset dir="${user.home}/tmp/DC/lib" includes="*.jar"/>
+        </copy>
+    </target>
+        
+    <target name="-copy-libs" depends="-copy-libs-dclite">
+        
+        <ant antfile="${src.dir}/build/build_app.xml" target="-copy.lib.server" >
+            <property name="build.server.lib.dir" value="${build.webapps.root}/WEB-INF/lib"/>
+        </ant>
+
+        <ant antfile="${src.dir}/build/build_app.xml" target="-copy.lib.remote" >
+            <property name="build.remote.lib.dir" value="${build.webapps.root}/WEB-INF/lib"/>
+        </ant>
+
+    </target>
+    <!--Extracts source, loads and cleans databases-->
+    <!--target name="build_and_clean" depends="-init-release,build,-legacy-edit"
+    
+               includes="**/*.java"
+               
+    -->
+    <target name="build_and_clean" depends="-init-release,-legacy-edit,-copy-libs">
+        <mkdir dir="${install.tmp.dir}/classes"/>
+        <mkdir dir="${build.install.server.dir}/dev/lib"/>
+        
+        <javac executable="${JAVAC}"
+               deprecation="off"
+               encoding="utf-8"
+               includeantruntime="false"
+               destdir="${install.tmp.dir}/classes"
+               bootclasspath="${_bootclasspath}"
+               optimize="off"
+
+               fork="true"
+               target="1.8"
+               source="1.8"
+               includejavaruntime="false"
+               memoryinitialsize="512m"
+               memoryMaximumSize="1024m">
+            <src>
+                <dirset dir="${build.install.server.dir}" includes="dev/*/src/main/java" excludes="dev/st-odbc/**"/>
+            </src>
+
+            <!--classpath path="${lib.path.shared}"/>
+            <classpath path="${lib.path.remote}"/>
+            <classpath path="${lib.path.server}"/>
+            <classpath path="${lib.path.other}"/-->
+
+            <classpath>
+                <fileset dir="${build.webapps.root}/WEB-INF/lib" includes="*.jar"/>
+                <fileset dir="${build.install.server.dir}/dev/lib" includes="*.jar"/>
+            </classpath>
+        </javac>
+        
+        <!--<antcall target="-load-databases"/> -->
+    </target>
+
+    <!--Extracts databases and builds jars-->
+    <!--target name="-build_application" depends="build_and_clean,-init"-->
+    <target name="-generate-source" depends="-init-release">
+        <ant antfile="${src.dir}/build/build_app.xml" target="generate-constants" >        
+            <property name="generate.target" value="PROD"/>
+            <property name="generate.layer" value="${DEV_LAYER}"/>
+            <property name="generate.src.dir" value="${main.src.dir}"/>
+        </ant>
+        <ant antfile="${src.dir}/build/build_app.xml" target="release-gwt" >        
+            <property name="generate.branch" value=""/>
+            <property name="USER" value="${build.install.tempdb.user}"/>
+            <property name="PASSWORD" value="${build.install.tempdb.password}" />
+            <property name="DBSERVER" value="${build.install.tempdb.dbserver}" />
+            <property name="DATASOURCE" value="${build.install.tempdb.datasource}" />
+            <property name="CONNECT_TYPE" value="${build.install.tempdb.connect.type}" />
+            <property name="MASTER_URL" value="${build.install.tempdb.master.url}"/>
+        </ant>
+    </target>
+    
+    <target name="-build_application" depends="build_and_clean"/>
+
+    <target name="main" depends="release-installer">
+        <touch file="${install.tmp.dir}/complete"/>
+    </target>
+</project>
